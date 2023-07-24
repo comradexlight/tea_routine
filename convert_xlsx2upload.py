@@ -9,7 +9,7 @@ from openpyxl.worksheet.worksheet import Worksheet
 from openpyxl import load_workbook
 
 
-@dataclass(slots=True, frozen=True)
+@dataclass(slots=True)
 class SaleRecordItem:
     title: str
     price: int
@@ -17,6 +17,24 @@ class SaleRecordItem:
     amount: float
     discount: int
     
+
+unnecessary_rows = [
+        "итог работы чаепитие администратор утро",
+        "Чаепитие 2 админа",
+        "итог работы чаепитие 2 админа",
+        "Чаепитие администратор вечер",
+        "итог работы чаепитие администратор вечер",
+        "Розница администратор утро",
+        "итог работы розница администратор утро"
+        "Розница 2 администратора",
+        "итог работы розница 2 сотрудника",
+        "Розница администратор вечер",
+        "итог работы розница администратор вечер",
+        "внутренние расходы"
+    ]
+
+end_row = "Сумма денег за чаепития"
+
 
 def read_xlsx2wb(path: str) -> Workbook:
     return load_workbook(filename=path, read_only=False)
@@ -44,20 +62,30 @@ def collect_data_from_ws(ws: Worksheet) -> List[SaleRecordItem]:
     cache = []
     sales_record_items = []
     for row in ws.iter_rows(min_col=2, min_row=4, max_col=6, values_only=True):
-        if row[0] not in cache:
-            sales_record_items.append(SaleRecordItem(
-                title=row[0],
-                price=row[1],
-                qty=row[2],
-                amount=row[3],
-                discount=row[4]
-            ))
-            cache.append(row[0])
-        else:
-            pass
-            #TODO
-    
+        if row[0] != end_row and is_row_need(row):
+            if row[0] not in cache:
+                sales_record_items.append(SaleRecordItem(
+                    title=row[0],
+                    price=row[1],
+                    qty=row[2],
+                    amount=row[3],
+                    discount=row[4]
+                ))
+                cache.append(row[0])
+            else:
+                tmp_item = [item for item in sales_record_items if item.title == row[0]][0]
+                sales_record_items[sales_record_items.index(tmp_item)].qty += row[2]
+        elif row[0] == end_row:
+            break
+
     return sales_record_items
+
+
+def is_row_need(row) -> bool:
+    if [cell for cell in row if cell is not None]:
+        return True 
+    elif row[0] in unnecessary_rows:
+        return False
 
 
 def convert_xlsx(ws: Worksheet) -> None:
