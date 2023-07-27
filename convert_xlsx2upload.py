@@ -15,7 +15,6 @@ class SaleRecordItem:
     price: int
     qty: float
     amount: float
-    discount: int
     
 
 unnecessary_rows = [
@@ -30,7 +29,7 @@ unnecessary_rows = [
         "итог работы розница 2 сотрудника",
         "Розница администратор вечер",
         "итог работы розница администратор вечер",
-        "внутренние расходы"
+        "внутренние расходы",
     ]
 
 end_row = "Сумма денег за чаепития"
@@ -61,7 +60,7 @@ def select_active_ws_names(wb: Workbook) -> List[str]:
 def collect_data_from_ws(ws: Worksheet) -> List[SaleRecordItem]:
     cache = []
     sales_record_items = []
-    for row in ws.iter_rows(min_col=2, min_row=4, max_col=6, values_only=True):
+    for row in ws.iter_rows(min_col=2, min_row=4, max_col=5, values_only=True):
         if row[0] != end_row and is_row_need(row):
             if row[0] not in cache:
                 sales_record_items.append(SaleRecordItem(
@@ -69,12 +68,12 @@ def collect_data_from_ws(ws: Worksheet) -> List[SaleRecordItem]:
                     price=row[1],
                     qty=row[2],
                     amount=row[3],
-                    discount=row[4]
                 ))
                 cache.append(row[0])
             else:
                 tmp_item = [item for item in sales_record_items if item.title == row[0]][0]
                 sales_record_items[sales_record_items.index(tmp_item)].qty += row[2]
+                sales_record_items[sales_record_items.index(tmp_item)].amount += row[3]
         elif row[0] == end_row:
             break
 
@@ -82,24 +81,40 @@ def collect_data_from_ws(ws: Worksheet) -> List[SaleRecordItem]:
 
 
 def is_row_need(row) -> bool:
-    if [cell for cell in row if cell is not None]:
-        return True 
-    elif row[0] in unnecessary_rows:
+    if [cell for cell in row if cell is None]:
+        return False 
+    elif row[0].strip() in unnecessary_rows:
         return False
+    return True
 
 
-def convert_xlsx(ws: Worksheet) -> None:
-    print(collect_data_from_ws(ws))
+def create_sheet_for_upload(wb2upload: Workbook,
+                           list2upload: List[SaleRecordItem]) -> None:
+    ws = wb2upload.create_sheet("temp") #TODO get page names
+    ws = wb2upload.active
+    for row, element in enumerate(list2upload, start=1):
+        ws.cell(row=row, column=1, value=element.title)
+        ws.cell(row=row, column=2, value=element.price)
+        ws.cell(row=row, column=3, value=element.qty)
+        ws.cell(row=row, column=4, value=element.amount)
+
+
+def convert_xlsx(wb2upload: Workbook, ws: Worksheet) -> None:
+    list2upload = collect_data_from_ws(ws)
+    create_sheet_for_upload(wb2upload, list2upload)
+    wb2upload.save("temp.xlsx")
 
 
 def main() -> None:
     path = argv[1]
     wb = read_xlsx2wb(path)
+    wb2upload = Workbook()  
     active_ws_names = select_active_ws_names(wb)
     active_ws = [wb[ws_name] for ws_name in active_ws_names]
     processes = []
     for ws in active_ws:
-        processes.append(Process(target=convert_xlsx, args=(ws,), daemon=True))
+        processes.append(Process(target=convert_xlsx, args=(wb2upload, ws,),
+                                 daemon=True))
     [process.start() for process in processes]
     [process.join() for process in processes]
 
