@@ -2,8 +2,9 @@ from time import time
 from sys import argv
 from dataclasses import dataclass
 from typing import List
-from multiprocessing import Process
+# from multiprocessing import Process
 
+from icu import Collator, Locale
 from openpyxl import Workbook
 from openpyxl.worksheet.worksheet import Worksheet
 from openpyxl import load_workbook
@@ -89,9 +90,10 @@ def is_row_need(row) -> bool:
 
 
 def create_sheet_for_upload(wb2upload: Workbook,
-                           list2upload: List[SaleRecordItem]) -> None:
-    ws = wb2upload.create_sheet("temp") #TODO get page names
-    ws = wb2upload.active
+                           list2upload: List[SaleRecordItem],
+                           sheet_name: str) -> None:
+    ws = wb2upload.create_sheet(sheet_name)
+    print(ws.title, sheet_name)
     for row, element in enumerate(list2upload, start=1):
         ws.cell(row=row, column=1, value=element.title)
         ws.cell(row=row, column=2, value=element.price)
@@ -99,10 +101,16 @@ def create_sheet_for_upload(wb2upload: Workbook,
         ws.cell(row=row, column=4, value=element.amount)
 
 
+def sort_list2upload(list2upload: List[SaleRecordItem]) -> None:
+    collator = Collator.createInstance(Locale('ru_RU'))
+    list2upload.sort(key=lambda element: collator.getSortKey(element.title))
+    return
+
+
 def convert_xlsx(wb2upload: Workbook, ws: Worksheet) -> None:
     list2upload = collect_data_from_ws(ws)
-    create_sheet_for_upload(wb2upload, list2upload)
-    wb2upload.save("temp.xlsx")
+    sort_list2upload(list2upload)
+    create_sheet_for_upload(wb2upload, list2upload, ws.title)
 
 
 def main() -> None:
@@ -111,12 +119,15 @@ def main() -> None:
     wb2upload = Workbook()  
     active_ws_names = select_active_ws_names(wb)
     active_ws = [wb[ws_name] for ws_name in active_ws_names]
-    processes = []
+    # processes = []
     for ws in active_ws:
-        processes.append(Process(target=convert_xlsx, args=(wb2upload, ws,),
-                                 daemon=True))
-    [process.start() for process in processes]
-    [process.join() for process in processes]
+        convert_xlsx(wb2upload, ws)
+    wb2upload.save("2upload.xlsx")
+    # for ws in active_ws:
+        # processes.append(Process(target=convert_xlsx, args=(wb2upload, ws,),
+                                 # daemon=True))
+    # [process.start() for process in processes]
+    # [process.join() for process in processes]
 
 
 if __name__ == '__main__':
