@@ -1,8 +1,9 @@
+"""Simple converter for xlsx documents.
+Prepares data from retail outlet sales files for loading into 1C"""
 from time import time
 from sys import argv
 from dataclasses import dataclass
 from typing import List
-# from multiprocessing import Process
 
 from icu import Collator, Locale
 from openpyxl import Workbook
@@ -16,7 +17,7 @@ class SaleRecordItem:
     price: int
     qty: float
     amount: float
-    
+
 
 unnecessary_rows = [
         "итог работы чаепитие администратор утро",
@@ -36,10 +37,6 @@ unnecessary_rows = [
 end_row = "Сумма денег за чаепития"
 
 
-def read_xlsx2wb(path: str) -> Workbook:
-    return load_workbook(filename=path, read_only=False)
-
-
 def select_active_ws_names(wb: Workbook) -> List[str]:
     MSG = "select the page index to be prepared for uploading," \
             "separated by space, like: 1 2 3: " 
@@ -55,7 +52,7 @@ def select_active_ws_names(wb: Workbook) -> List[str]:
         for index, name in enumerate(all_sheet_names):
             if index in active_ws_index:
                 active_ws.append(name)
-    return active_ws 
+    return active_ws
 
 
 def collect_data_from_ws(ws: Worksheet) -> List[SaleRecordItem]:
@@ -83,7 +80,7 @@ def collect_data_from_ws(ws: Worksheet) -> List[SaleRecordItem]:
 
 def is_row_need(row) -> bool:
     if [cell for cell in row if cell is None]:
-        return False 
+        return False
     elif row[0].strip() in unnecessary_rows:
         return False
     return True
@@ -93,12 +90,21 @@ def create_sheet_for_upload(wb2upload: Workbook,
                            list2upload: List[SaleRecordItem],
                            sheet_name: str) -> None:
     ws = wb2upload.create_sheet(sheet_name)
-    print(ws.title, sheet_name)
+    adjusted_width = 0
     for row, element in enumerate(list2upload, start=1):
-        ws.cell(row=row, column=1, value=element.title)
+        title = element.title.removesuffix(", , шт").removesuffix(", , кг")
+
+        if adjusted_width < len(title):
+            adjusted_width = len(title)
+
+        ws.cell(row=row, column=1, value=title)
         ws.cell(row=row, column=2, value=element.price)
         ws.cell(row=row, column=3, value=element.qty)
         ws.cell(row=row, column=4, value=element.amount)
+        ws.cell(row=row, column=5, value=f"=100*(1-D{row}/(B{row}*C{row}))")
+
+    ws.column_dimensions['A'].width = adjusted_width
+    ws.cell(row=len(list2upload) + 2, column=4, value=f"=SUM(D1:D{len(list2upload)})")
 
 
 def sort_list2upload(list2upload: List[SaleRecordItem]) -> None:
@@ -115,23 +121,16 @@ def convert_xlsx(wb2upload: Workbook, ws: Worksheet) -> None:
 
 def main() -> None:
     path = argv[1]
-    wb = read_xlsx2wb(path)
-    wb2upload = Workbook()  
+    wb = load_workbook(filename=path, read_only=False)
+    wb2upload = Workbook()
     active_ws_names = select_active_ws_names(wb)
     active_ws = [wb[ws_name] for ws_name in active_ws_names]
-    # processes = []
     for ws in active_ws:
         convert_xlsx(wb2upload, ws)
     wb2upload.save("2upload.xlsx")
-    # for ws in active_ws:
-        # processes.append(Process(target=convert_xlsx, args=(wb2upload, ws,),
-                                 # daemon=True))
-    # [process.start() for process in processes]
-    # [process.join() for process in processes]
 
 
 if __name__ == '__main__':
     start_time = time()
     main()
     print(time() - start_time)
-
