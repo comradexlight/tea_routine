@@ -53,21 +53,25 @@ def collect_data_from_ws(input_ws: Worksheet) -> List[SaleRecordItem]:
     end_row = "Сумма денег за чаепития"
     sales_record_items = []
     for row in input_ws.iter_rows(min_col=2, min_row=4, max_col=5, values_only=True):
-        if row[0] != end_row and is_row_need(row):
+        if row[0] == end_row:
+            break
+        if is_row_need(row):
+            title = row[0] if (row[0] is not None) else "Пропущено название"
+            price = row[1] if (row[1] is not None) else 0
+            qty = row[2] if (row[2] is not None) else 0
+            amount = row[3] if (row[3] is not None) else 0
             if row[0] not in cache:
                 sales_record_items.append(SaleRecordItem(
-                    title=str(row[0]),
-                    price=int(row[1]),
-                    qty=float(row[2]),
-                    amount=float(row[3]),
+                    title=row[0],
+                    price=price, #int(row[1]),
+                    qty=qty, #float(row[2]),
+                    amount=amount #float(row[3]),
                 ))
                 cache.append(row[0])
             else:
                 tmp_item = [item for item in sales_record_items if item.title == row[0]][0]
-                sales_record_items[sales_record_items.index(tmp_item)].qty += float(row[2])
-                sales_record_items[sales_record_items.index(tmp_item)].amount += float(row[3])
-        elif row[0] == end_row:
-            break
+                sales_record_items[sales_record_items.index(tmp_item)].qty += qty #float(row[2])
+                sales_record_items[sales_record_items.index(tmp_item)].amount += amount #float(row[3])
 
     return sales_record_items
 
@@ -78,21 +82,21 @@ def is_row_need(row: tuple) -> bool:
     """
     unnecessary_rows = [
         "итог работы чаепитие администратор утро",
+        "итог работы розница администратор утро",
         "Чаепитие 2 админа",
         "итог работы чаепитие 2 админа",
         "Чаепитие администратор вечер",
         "итог работы чаепитие администратор вечер",
         "Розница администратор утро",
-        "итог работы розница администратор утро"
+        "итог работы розница администратор утро",
         "Розница 2 администратора",
         "итог работы розница 2 сотрудника",
         "Розница администратор вечер",
         "итог работы розница администратор вечер",
         "внутренние расходы",
+        None
     ]
-    if [cell for cell in row if cell is None]:
-        return False
-    if row[0].strip() in unnecessary_rows:
+    if row[0] in unnecessary_rows:
         return False
     return True
 
@@ -115,8 +119,8 @@ def create_sheet_for_upload(wb2upload: Workbook,
         new_ws.cell(row=row, column=1, value=title)
         new_ws.cell(row=row, column=2, value=element.price)
         new_ws.cell(row=row, column=3, value=element.qty)
-        new_ws.cell(row=row, column=4, value=element.amount)
-        new_ws.cell(row=row, column=5, value=f"=100*(1-D{row}/(B{row}*C{row}))")
+        new_ws.cell(row=row, column=4, value=element.amount).number_format = "0" 
+        new_ws.cell(row=row, column=5, value=f"=1-D{row}/(B{row}*C{row})").number_format = '0.00%'
 
     new_ws.column_dimensions['A'].width = adjusted_width
     new_ws.cell(row=len(list2upload) + 2, column=4, value=f"=SUM(D1:D{len(list2upload)})")
