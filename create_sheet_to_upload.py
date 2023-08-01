@@ -25,7 +25,7 @@ def create_sheet_to_upload(wb2upload: Workbook,
         new_ws.cell(row=row, column=1, value=title)
         new_ws.cell(row=row, column=2, value=element.price)
         new_ws.cell(row=row, column=3, value=element.qty)
-        new_ws.cell(row=row, column=4, value=element.amount).number_format = "0" 
+        new_ws.cell(row=row, column=4, value=element.amount).number_format = "0"
         new_ws.cell(row=row, column=5, value=f"=1-D{row}/(B{row}*C{row})").number_format = '0.00%'
 
     new_ws.column_dimensions['A'].width = adjusted_width

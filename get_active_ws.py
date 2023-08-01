@@ -25,5 +25,8 @@ def _select_active_ws_names(input_wb: Workbook) -> List[str]:
 
 
 def get_active_ws(input_wb: Workbook) -> List[Worksheet]:
+    """
+    The function returns active worksheets by names of worksheets.
+    """
     active_sheet_names = _select_active_ws_names(input_wb)
     return [input_wb[ws_name] for ws_name in active_sheet_names]

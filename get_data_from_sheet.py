@@ -22,32 +22,25 @@ def get_data_from_sheet(input_ws: Worksheet) -> List[SaleRecordItem]:
     end_row = "Сумма денег за чаепития"
     sales_record_items = []
     for row in input_ws.iter_rows(min_col=2, min_row=4, max_col=5, values_only=True):
-
         if row[0] == end_row:
             break
-        
         if _is_row_need(row):
-
             title = _get_data_from_row(row, "title")
-            price = _get_data_from_row(row, "price") 
+            price = _get_data_from_row(row, "price")
             qty = _get_data_from_row(row, "qty")
-            amount = _get_data_from_row(row, "amount") 
-
+            amount = _get_data_from_row(row, "amount")
             if row[0] not in cache:
                 sales_record_items.append(SaleRecordItem(
-                    title=row[0],
+                    title=title,
                     price=price,
                     qty=qty,
                     amount=amount
                 ))
-
                 cache.append(row[0])
-                
             else:
                 existing_item = [item for item in sales_record_items if item.title == row[0]][0]
                 sales_record_items[sales_record_items.index(existing_item)].qty += qty
                 sales_record_items[sales_record_items.index(existing_item)].amount += amount
-
     return sales_record_items
 
 
@@ -69,6 +62,8 @@ def _is_row_need(row: tuple) -> bool:
         "Розница администратор вечер",
         "итог работы розница администратор вечер",
         "внутренние расходы",
+        "итог работы розница 1 администратор",
+        "итог работы чаепитие 1 администратор",
         None
     ]
     if row[0] in unnecessary_rows:

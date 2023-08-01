@@ -51,7 +51,7 @@ def collect_data_from_ws(input_ws: Worksheet) -> List[SaleRecordItem]:
     """
     cache = []
     end_row = "Сумма денег за чаепития"
-    sales_record_items = []
+    sal_rec_items = []
     for row in input_ws.iter_rows(min_col=2, min_row=4, max_col=5, values_only=True):
         if row[0] == end_row:
             break
@@ -61,19 +61,20 @@ def collect_data_from_ws(input_ws: Worksheet) -> List[SaleRecordItem]:
             qty = row[2] if (row[2] is not None) else 0
             amount = row[3] if (row[3] is not None) else 0
             if row[0] not in cache:
-                sales_record_items.append(SaleRecordItem(
-                    title=row[0],
-                    price=price, #int(row[1]),
-                    qty=qty, #float(row[2]),
-                    amount=amount #float(row[3]),
+                sal_rec_items.append(SaleRecordItem(
+                    title=title,
+                    price=price,
+                    qty=qty,
+                    amount=amount
                 ))
                 cache.append(row[0])
             else:
-                tmp_item = [item for item in sales_record_items if item.title == row[0]][0]
-                sales_record_items[sales_record_items.index(tmp_item)].qty += qty #float(row[2])
-                sales_record_items[sales_record_items.index(tmp_item)].amount += amount #float(row[3])
+                tmp_item = [item for item in sal_rec_items
+                        if item.title == row[0]][0]
+                sal_rec_items[sal_rec_items.index(tmp_item)].qty += qty
+                sal_rec_items[sal_rec_items.index(tmp_item)].amount += amount
 
-    return sales_record_items
+    return sal_rec_items
 
 
 def is_row_need(row: tuple) -> bool:
@@ -119,7 +120,7 @@ def create_sheet_for_upload(wb2upload: Workbook,
         new_ws.cell(row=row, column=1, value=title)
         new_ws.cell(row=row, column=2, value=element.price)
         new_ws.cell(row=row, column=3, value=element.qty)
-        new_ws.cell(row=row, column=4, value=element.amount).number_format = "0" 
+        new_ws.cell(row=row, column=4, value=element.amount).number_format = "0"
         new_ws.cell(row=row, column=5, value=f"=1-D{row}/(B{row}*C{row})").number_format = '0.00%'
 
     new_ws.column_dimensions['A'].width = adjusted_width
@@ -139,7 +140,6 @@ def convert_xlsx(wb2upload: Workbook, input_ws: Worksheet) -> None:
     The function collects and runs other functions to crete sheet in
     the xlsx document for uploading.
     """
-    #TODO Need to cobine with main() function?
     list2upload = collect_data_from_ws(input_ws)
     sort_list2upload(list2upload)
     create_sheet_for_upload(wb2upload, list2upload, input_ws.title)
